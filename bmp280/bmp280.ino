@@ -39,7 +39,7 @@
   #include <WiFiClient.h>
   WiFiClient espClient;
 
-  #define MQTT_SERVER   "192.168.1.101"
+  #define MQTT_SERVER   "136.112.103.14"
   #define MQTT_PORT     1883
   #define MQTT_USER     NULL
   #define MQTT_PASSWORD NULL
@@ -65,6 +65,13 @@ Adafruit_BMP280 bmp;
 unsigned long lastSendMs = 0;                 // (estado) último envío realizado
 const unsigned long SEND_PERIOD_MS = 5000;    // período de envío (ms)
 
+// =====================
+// LED built-in (Wemos/ESP8266 suele ser activo en LOW)
+// =====================
+const uint8_t LED_PIN = LED_BUILTIN;   // usa el pin correcto según la placa
+
+// Topics globales
+String topic_string_sub; 
 // ------------------------------------------------------------
 // printSensorJson()
 // ------------------------------------------------------------
@@ -263,6 +270,9 @@ void reconnectMQTT() {
   String topic_connect = ("cabrerapinto/" + String(TYPE_NODE) + "/" + clientId + "/connection");
   const char* conexion_topic = topic_connect.c_str();
 
+  // Topic de subscripcion
+  topic_string_sub = ("orchard/" + String(TYPE_NODE) + "/" + clientId + "/activate_led");
+  
   Serial.println("[MQTT] reconnect loop...");
   while (!client.connected()) {
     Serial.printf("[MQTT] Connecting to %s:%d as %s\n",
@@ -286,6 +296,11 @@ void reconnectMQTT() {
 
     if (ok) {
       Serial.println("[MQTT] connected");
+      // Nos suscribimos a los siguientes topics
+      client.subscribe(topic_string_sub.c_str());
+      Serial.printf("\r\Subscribed to:\t%s", topic_string_sub.c_str());
+      Serial.println();
+      // Publicamos el estado de la conexion en el topic
       client.publish(conexion_topic, "Online", true);  // retained
     } else {
       Serial.printf("[MQTT] failed rc=%d, retry 5s\n", client.state());
@@ -359,6 +374,63 @@ void sendToBroker() {
   Serial.printf("[PUB] publish=%s\n", ok ? "OK" : "FAIL");
 }
 
+void callback(char* topic, byte* payload, unsigned int length) {
+  // Copiar payload a string C terminada en \0
+  char msg[128];
+  unsigned int n = (length < sizeof(msg) - 1) ? length : (sizeof(msg) - 1);
+  for (unsigned int i = 0; i < n; i++) msg[i] = (char)payload[i];
+  msg[n] = '\0';
+
+  Serial.print("[MQTT] Message on [");
+  Serial.print(topic);
+  Serial.print("] => ");
+  Serial.println(msg);
+
+  // ¿Es un topic de LED? (aceptamos el topic completo y el simple)
+  bool isLedTopic = false;
+  if (topic_string_sub.length() > 0 && strcmp(topic, topic_string_sub.c_str()) == 0) isLedTopic = true;
+  if (strcmp(topic, "activate_led") == 0) isLedTopic = true;
+  if (!isLedTopic) return;
+
+  // Intento 1: JSON (opcional)
+  const char* s = msg;
+  StaticJsonDocument<128> doc;
+  DeserializationError err = deserializeJson(doc, msg);
+  if (!err) {
+    if (doc["state"].is<const char*>()) s = doc["state"];
+    else if (doc["value"].is<const char*>()) s = doc["value"];
+    else if (doc["value"].is<int>()) {
+      int v = doc["value"].as<int>();
+      s = (v != 0) ? "ON" : "OFF";
+    }
+  }
+
+  // Normalizar comando (sin usar String para no fragmentar memoria)
+  // Regla pedida: ON o 1 => APAGAR LED built-in (active-low => HIGH apaga) 
+  bool cmdOn = false;
+
+  // Quitar espacios iniciales
+  while (*s == ' ' || *s == '\t' || *s == '\r' || *s == '\n') s++;
+
+  if (strcasecmp(s, "ON") == 0 || strcasecmp(s, "TRUE") == 0 || strcmp(s, "1") == 0) {
+    cmdOn = true;
+  } else {
+    // también soporta números tipo "25" (cualquier >0 lo tratamos como ON)
+    int v = atoi(s);
+    if (v > 0) cmdOn = true;
+  }
+
+  if (cmdOn) {
+    // ON => apaga LED
+    digitalWrite(LED_PIN, HIGH);
+    Serial.println("[LED] Command ON => LED OFF (HIGH)");
+  } else {
+    // OFF/0 => enciende LED (por si quieres confirmación visual)
+    digitalWrite(LED_PIN, LOW);
+    Serial.println("[LED] Command OFF/0 => LED ON (LOW)");
+  }
+}
+
 // ------------------------------------------------------------
 // setup()
 // ------------------------------------------------------------
@@ -383,6 +455,10 @@ void setup() {
   // Inicia bus I2C (en ESP8266 puedes usar Wire.begin(SDA, SCL) si quieres pines custom)
   Wire.begin();
 
+  // LED: en ESP8266 normalmente HIGH = apagado, LOW = encendido (active-low) 
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, HIGH);  // empezamos con LED apagado
+
   Serial.println("\n=== NodeMCU BMP280 -> MQTT (cada 5s) ===");
 
   // 1) WiFi
@@ -391,6 +467,8 @@ void setup() {
   // 2) MQTT
   client.setServer(MQTT_SERVER, MQTT_PORT);
   client.setBufferSize(1024);
+  // MUY IMPORTANTE: registrar callback de PubSubClient 
+  client.setCallback(callback);
   reconnectMQTT();
 
   // 3) Diagnóstico + sensor
