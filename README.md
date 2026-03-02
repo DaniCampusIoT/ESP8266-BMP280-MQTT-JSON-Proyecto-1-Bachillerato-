@@ -10,7 +10,7 @@ Está pensado como práctica guiada para alumnado de 1º de Bachillerato: aprend
 
 ***
 
-## Funcionalidad (qué hace)
+## Funcionalidad 
 
 - Se conecta a una red **WiFi** (con reintentos si falla).
 - Se conecta a un **broker MQTT** (con reconexión automática).
@@ -35,7 +35,7 @@ Está pensado como práctica guiada para alumnado de 1º de Bachillerato: aprend
 
 ***
 
-## Conexiones (cableado)
+## Conexiones 
 
 ### BMP280 (I2C) → NodeMCU (ESP8266)
 
@@ -59,7 +59,7 @@ Instala en Arduino IDE (Library Manager):
 
 ***
 
-## Configuración rápida (qué debes cambiar)
+## Configuración rápida 
 
 En la cabecera del código:
 
@@ -122,8 +122,7 @@ orchard/<TYPE_NODE>/ESP8266Client-<chipId>/connection
 
 ***
 
-## Estructura del código (para estudiantes)
-
+## Estructura del código 
 Funciones principales:
 
 - `wifiConnect()`: conecta a WiFi (bloqueante con reintentos).
