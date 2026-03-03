@@ -72,6 +72,7 @@ const uint8_t LED_PIN = LED_BUILTIN;   // usa el pin correcto según la placa
 
 // Topics globales
 String topic_string_sub; 
+String topic_sub_simple = "activate_led";
 // ------------------------------------------------------------
 // printSensorJson()
 // ------------------------------------------------------------
@@ -298,6 +299,8 @@ void reconnectMQTT() {
       Serial.println("[MQTT] connected");
       // Nos suscribimos a los siguientes topics
       client.subscribe(topic_string_sub.c_str());
+      client.subscribe(topic_sub_simple.c_str());
+      Serial.printf("\r\Subscribed to:\t%s", topic_sub_simple.c_str());
       Serial.printf("\r\Subscribed to:\t%s", topic_string_sub.c_str());
       Serial.println();
       // Publicamos el estado de la conexion en el topic
