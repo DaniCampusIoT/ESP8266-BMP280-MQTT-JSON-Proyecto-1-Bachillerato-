@@ -26,7 +26,7 @@ Está pensado como práctica guiada para alumnado de 1º de Bachillerato: aprend
 
 ***
 
-## Material necesario
+## 1) Material necesario
 
 - 1 × ESP8266 NodeMCU (o compatible)
 - 1 × Sensor BMP280 por I2C
@@ -37,7 +37,7 @@ Está pensado como práctica guiada para alumnado de 1º de Bachillerato: aprend
 
 ***
 
-## Cableado (Wemos D1 + BMP280 por I2C)
+## 2) Cableado (Wemos D1 + BMP280 por I2C)
 
 En **Wemos D1**, los pines I2C más usados son:
 
@@ -66,7 +66,7 @@ Muchos módulos BMP280 traen pines **CSB** y **SDO**:
 
 ***
 
-## Software y librerías
+## 3) Software y librerías
 
 Instala en Arduino IDE (Library Manager):
 
@@ -89,7 +89,7 @@ http://arduino.esp8266.com/stable/package_esp8266com_index.json
 
 ***
 
-## Configuración rápida 
+## 4) Configuración rápida 
 
 En la cabecera del código verás parámetros como estos (puedes cambiarlos por **tus propios valores**):
 
@@ -123,7 +123,7 @@ Además, en la función `sendToBroker()` puedes cambiar el **topic de envío** p
 
 ***
 
-## Topics MQTT y ejemplo de mensaje
+## 5) Topics MQTT y ejemplo de mensaje
 
 ### Topic de datos
 
@@ -164,7 +164,7 @@ orchard/<TYPE_NODE>/ESP8266Client-<chipId>/connection
 
 ***
 
-## Estructura del código 
+## 6) Estructura del código 
 Funciones principales:
 
 - `wifiConnect()`: conecta a WiFi (bloqueante con reintentos).
@@ -176,7 +176,7 @@ Funciones principales:
 
 ***
 
-## Cómo modificar sensores y enviar otros datos
+## 7) Cómo modificar sensores y enviar otros datos
 
 La parte “educativa” del proyecto es que el alumnado pueda **cambiar el sensor** o **añadir más variables**. Estas son las zonas que deben tocar:
 
@@ -238,14 +238,14 @@ Así cada sensor/proyecto queda bien organizado.
 
 ***
 
-## 5) Node‑RED: ver datos y mandar órdenes al ESP8266
+## 8) Node‑RED: ver datos y mandar órdenes al ESP8266
 
 Node‑RED es una herramienta para crear “programas” uniendo **bloques** (nodos) con cables. En este proyecto lo usamos como un “panel de control”: por un lado **recibe** los datos que envía el ESP8266 por MQTT (en formato JSON) y los muestra en una web; por otro lado **envía** órdenes al ESP8266 (por ejemplo encender/apagar el LED) publicando en un topic de control.
 
 <img width="1919" height="872" alt="Screenshot_1" src="https://github.com/user-attachments/assets/a8373c5f-c2e4-4b7e-b7e3-7f3eabf9c83d" />
 
 
-### 5.1 Qué es MQTT en este proyecto
+### 8.1 Qué es MQTT en este proyecto
 
 MQTT funciona como un sistema de mensajería con “canales” llamados **topics**. Un dispositivo *publica* mensajes en un topic (por ejemplo, datos del sensor) y otro dispositivo *se suscribe* a ese topic para recibirlos.
 
@@ -256,7 +256,7 @@ Al inicio del programa, vemos los topics a los que se van a enviar los datos y a
 
 <img width="1299" height="301" alt="Screenshot_1" src="https://github.com/user-attachments/assets/659a3157-4d6a-453e-8d9d-cc889944397a" />
 
-### 5.2 Nodos que verás en el flujo
+### 8.2 Nodos que verás en el flujo
 
 #### `mqtt in` (recibir mensajes)
 
@@ -431,7 +431,7 @@ Esta parte sirve para controlar el LED del ESP8266.
 - `mqtt out`: publica ese mensaje en el topic de control (por ejemplo `activate_led` o un topic específico del dispositivo). Se configura como el nodo `mqtt in`
 
 
-### 9.3 Cómo “entender” un flujo rápido
+### 8.3 Cómo “entender” un flujo rápido
 
 Para no perderse, sigue este orden:
 
