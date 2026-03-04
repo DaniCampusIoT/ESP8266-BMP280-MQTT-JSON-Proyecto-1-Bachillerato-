@@ -300,8 +300,8 @@ void reconnectMQTT() {
       // Nos suscribimos a los siguientes topics
       client.subscribe(topic_string_sub.c_str());
       client.subscribe(topic_sub_simple.c_str());
-      Serial.printf("\r\Subscribed to:\t%s", topic_sub_simple.c_str());
-      Serial.printf("\r\Subscribed to:\t%s", topic_string_sub.c_str());
+      Serial.printf("Subscribed to:\t%s\n", topic_sub_simple.c_str());
+      Serial.printf("Subscribed to:\t%s\n", topic_string_sub.c_str());
       Serial.println();
       // Publicamos el estado de la conexion en el topic
       client.publish(conexion_topic, "Online", true);  // retained
