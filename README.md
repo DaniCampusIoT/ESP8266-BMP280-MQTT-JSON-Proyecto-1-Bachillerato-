@@ -1,112 +1,125 @@
+
 # ESP8266 + BMP280 → MQTT (JSON)
 
-Proyecto didáctico de meteorología IoT para 1º de Bachillerato
+Proyecto de clase (IoT / meteorología) para **1º Bachillerato**: montamos una mini estación meteorológica con un ESP8266 y un sensor BMP280, y enviamos los datos por WiFi usando MQTT en formato JSON.
+
+---
 
 ## Descripción
 
-Este repositorio contiene un proyecto en Arduino IDE para **ESP8266 (NodeMCU)** que lee un sensor barométrico **BMP280** por I2C (temperatura, presión y altitud estimada) y envía los datos en **formato JSON** a un **broker MQTT** cada 5 segundos.
+Este repositorio contiene un proyecto para **ESP8266 (NodeMCU / Wemos D1 mini)** programado con Arduino IDE. El ESP8266 lee un sensor barométrico **BMP280** por I2C (temperatura, presión y una altitud *estimada*) y envía esos datos a un **broker MQTT** cada 5 segundos en **JSON**.
 
-Está pensado como práctica guiada para alumnado de 1º de Bachillerato: aprender I2C, sensores, redes WiFi, mensajería MQTT y estructuración de datos con JSON.
+Objetivo didáctico: entender un proyecto IoT completo de principio a fin:
+- Hardware básico (cableado I2C).
+- Conexión a WiFi.
+- Mensajes MQTT (publicar/suscribirse con topics).
+- Datos en JSON (estructura clara para luego visualizar en Node-RED).
 
-***
+---
 
-## Funcionalidad 
+## Funcionalidad (qué hace el programa)
 
-- Se conecta a una red **WiFi** (con reintentos si falla).
-- Se conecta a un **broker MQTT** (con reconexión automática).
-- Publica un mensaje de estado **Online/Offline** usando LWT (Last Will) para monitorizar si el nodo cae.
-- Inicializa y configura el **BMP280**.
-- Cada `SEND_PERIOD_MS`:
-    - Lee `temperatura_c`, `presion_hpa`, `altitud_m`.
-    - Construye un JSON con:
-        - Metadatos del nodo (IP, RSSI).
-        - Timestamp relativo (`millis()`).
-        - Valores del sensor.
-    - Publica el JSON en un topic MQTT.
+- Se conecta a una red **WiFi** (si falla, vuelve a intentarlo).
+- Se conecta a un **broker MQTT** (si se corta, reconecta).
+- Publica un estado de conexión **Online/Offline** usando **LWT** (Last Will): así se puede saber desde fuera si el ESP “está vivo” o se ha caído. [web:407]
+- Detecta el sensor BMP280 por I2C (dirección típica `0x76` o `0x77`) y lo configura.
+- Cada `SEND_PERIOD_MS` (por defecto, 5000 ms):
+  - Lee `temperatura_c`, `presion_hpa` y `altitud_m` (estimada).
+  - Construye un JSON con información del ESP (IP, intensidad WiFi/RSSI, `millis()`) y valores del sensor.
+  - Publica ese JSON en un **topic MQTT**.
 
-***
+---
 
 ## 1) Material necesario
 
-- 1 × ESP8266 NodeMCU (o compatible)
-- 1 × Sensor BMP280 por I2C
-- [Descargar aquí](https://sparks.gogo.co.nz/ch340.html) el **Driver CH340**  
+- 1 × ESP8266 (NodeMCU o Wemos D1 mini)
+- 1 × Sensor BMP280 (I2C)
+- Cables Dupont (macho-macho o según tu módulo)
+- Cable USB (micro-USB o USB-C según la placa)
+- Driver CH340 (si tu placa lo necesita):  
+  [Descargar aquí](https://sparks.gogo.co.nz/ch340.html)
 
-**NOTA**: Si aparece algún error a la hora de instalar el driver, instalarlo con la placa Wemos D1 conectada al PC.
-- Cables Dupont
+**NOTA (importante):** si el PC no detecta el puerto COM o falla el driver, prueba a instalar el CH340 con la placa conectada y cambia de cable USB (algunos cables solo cargan y no sirven para datos).
 
-***
+---
 
-## 2) Cableado (Wemos D1 + BMP280 por I2C)
+## 2) Cableado (Wemos D1 / NodeMCU + BMP280 por I2C)
 
-En **Wemos D1**, los pines I2C más usados son:
+El bus I2C usa 2 cables de datos:
+- **SCL** (reloj)
+- **SDA** (datos)
 
-- **D1 = SCL = GPIO5**
-- **D2 = SDA = GPIO4**
+En ESP8266 suele usarse:
+- **D1 = GPIO5 = SCL**
+- **D2 = GPIO4 = SDA** [web:311][web:404]
 
-Si no sabes ubicarlos en la placa, a pesar de que están serigrafiados, búscalos en google (Wemos D1 pinout).
+> Si tu placa es NodeMCU/Wemos, normalmente en la serigrafía ya aparece D1/D2.
 
 ### Conexiones (I2C)
 
-![Nuevo Presentación de Microsoft PowerPoint](https://github.com/user-attachments/assets/03c42897-e598-430f-830e-7facc8c6fbce)
-
+![Cableado I2C Wemos D1 mini + BMP280](https://github.com/user-attachments/assets/03c42897-e598-430f-830e-7facc8c6fbce)
 
 - Wemos **3V3** → BMP280 **VCC / VIN** (usa 3.3V)
-- Wemos **G** (GND) → BMP280 **GND**
+- Wemos **G (GND)** → BMP280 **GND**
 - Wemos **D1 (GPIO5 / SCL)** → BMP280 **SCL**
 - Wemos **D2 (GPIO4 / SDA)** → BMP280 **SDA**
-
 
 ### Pines extra del BMP280 (si tu placa los tiene)
 
 Muchos módulos BMP280 traen pines **CSB** y **SDO**:
+- **SDO** cambia la dirección I2C: suele ser `0x76` cuando SDO está a GND y `0x77` cuando está a 3V3. [web:414]
+- **CSB** se usa en SPI; para I2C normalmente se deja como está en el módulo (si tu módulo da problemas, hay módulos donde ayuda fijarlo a 3V3, según diseño).
 
-- **CSB**: para I2C normalmente debe ir a **3V3** (en algunos módulos ya viene preparado, pero si no detecta el sensor, prueba a fijarlo a 3V3).
-- **SDO**: selecciona la dirección I2C (típicamente `0x76` u `0x77`); a **GND** suele dar `0x76` y a **3V3** suele dar `0x77` (depende del módulo).
-
-***
+---
 
 ## 3) Software y librerías
 
-Instala en Arduino IDE (Library Manager):
+### 3.1 Arduino IDE y librerías
+En Arduino IDE (Library Manager) instala:
+- **Adafruit BMP280 Library**
+- **ArduinoJson**
+- **PubSubClient**
 
-- Adafruit BMP280 Library
-- ArduinoJson
-- PubSubClient
-- Para las características del ESP8266, como es el WiFi, tenemos que tener el core instalado en el IDE. Para hacer esto, tenemos que ir a "Archivos" o "File" y hacer click en "Preferencias" o "Preferences".
-  
-<img width="891" height="615" alt="Screenshot_2" src="https://github.com/user-attachments/assets/bf18bc3e-4550-4b64-a274-acbb32c2fe17" />
+### 3.2 Instalar soporte ESP8266 (Board Manager)
+Para programar un ESP8266, Arduino IDE necesita el “core” del ESP8266.
 
-- Una ver ahí, tenemos que copiar en la casilla que se marca en el recuadro rojo las direcciones URLs a las placas que vamos a utilizar. Esto nos permite importar las características de los microcontroladores ESP8266 y el ESP32.
-<img width="809" height="550" alt="Screenshot_3" src="https://github.com/user-attachments/assets/8a6d64c7-042d-4f54-9f75-841802146e36" />
+1) Abre **Archivo / File → Preferencias / Preferences**.  
+   (En esta ventana se configuran URLs de placas.)
 
-Copia los siguientes enlaces y pégalos en el recuadro que te muestro en la imagen de arriba:
+<img width="891" height="615" alt="Preferencias Arduino IDE" src="https://github.com/user-attachments/assets/bf18bc3e-4550-4b64-a274-acbb32c2fe17" />
+
+2) En “Additional Boards Manager URLs” pega esta URL:
 
 ```
+
 http://arduino.esp8266.com/stable/package_esp8266com_index.json
+
 ```
-(Observa el icono con dos recuadros superpuestos, arriba a la derecha. Hacer click en este icono te permite copiar el contenido del cuadro gris, en este caso, la URL) 
 
-***
+<img width="809" height="550" alt="URL del core ESP8266" src="https://github.com/user-attachments/assets/8a6d64c7-042d-4f54-9f75-841802146e36" />
 
-## 4) Estructura del código 
+> Consejo: en GitHub, el icono de “dos cuadrados” permite copiar fácilmente el texto de un bloque.
 
-Funciones principales:
+---
 
-- `wifiConnect()`: conecta a WiFi (bloqueante con reintentos).
-- `reconnectMQTT()`: conecta a MQTT y configura LWT + publica “Online”.
-- `i2cScan()`: escáner I2C para verificar que el sensor responde (diagnóstico).
-- `iniciaSensor()`: inicializa el BMP280 (0x76/0x77) y configura el muestreo.
-- `sendToBroker()`: lee sensor → crea JSON → publica por MQTT.
-- `loop()`: mantiene conexiones y ejecuta el envío periódico.
+## 4) Estructura del código (qué funciones importan)
 
-Accede a la carpeta `bmp280` y abre el archivo `bmp280.ino`. Tómate tu tiempo para intentar entender el código.
+En la carpeta `bmp280` abre `bmp280.ino`. Estas son las partes más importantes:
 
-***
+- `wifiConnect()`: conecta el ESP al WiFi (si falla, reintenta).
+- `reconnectMQTT()`: conecta al broker MQTT, configura LWT y publica “Online”.
+- `i2cScan()`: busca dispositivos I2C y muestra direcciones encontradas (sirve para comprobar cableado).
+- `iniciaSensor()`: inicializa el BMP280 y configura el muestreo.
+- `sendToBroker()`: lee el sensor → crea el JSON → publica por MQTT.
+- `loop()`: mantiene WiFi/MQTT y envía datos cada cierto tiempo.
 
-## 5) Configuración rápida 
+**Recomendación de clase:** lee primero `setup()` y `loop()` para entender el “mapa” general, y luego entra a las funciones.
 
-En la cabecera del código verás parámetros como estos (puedes cambiarlos por **tus propios valores**):
+---
+
+## 5) Configuración rápida (valores que sí puedes cambiar)
+
+En la parte de arriba del código verás constantes como estas (cámbialas por tus datos):
 
 ```cpp
 #define WIFI_SSID     "TU_WIFI"
@@ -119,36 +132,41 @@ En la cabecera del código verás parámetros como estos (puedes cambiarlos por 
 #define MQTT_PORT   1883
 ```
 
-Qué significa cada uno:
+Qué significa cada una:
 
-- `WIFI_SSID` y `WIFI_PASSWORD`: el nombre y contraseña de la WiFi a la que se conectará el ESP8266 (pon la de tu casa o la del instituto).
-- `MQTT_SERVER` y `MQTT_PORT`: la “dirección” y el puerto del servidor MQTT (broker) al que enviará los datos.
+- `WIFI_SSID` y `WIFI_PASSWORD`: la WiFi a la que se conectará el ESP8266 (la del aula, tu móvil en modo hotspot, etc.).
+- `MQTT_SERVER` y `MQTT_PORT`: el “servidor de mensajes” (broker MQTT) y su puerto.
 
 Otros parámetros útiles:
 
-- `TYPE_NODE`: etiqueta para organizar topics (`meteorologia`, `aula1`, `grupo4`, etc.).
-- `SEND_PERIOD_MS`: periodo de publicación (por defecto 5000 ms, o sea, cada 5 segundos).
+- `TYPE_NODE`: etiqueta para organizar los topics (`meteorologia`, `aula1`, `grupo4`, etc.).
+- `SEND_PERIOD_MS`: cada cuánto se envían datos (por defecto 5000 ms = 5 s).
 
-Además, en la función `sendToBroker()` puedes cambiar el **topic de envío** para que identifique mejor al alumno o al grupo (por ejemplo, incluir `grupo4`, `alumno_carla`, `mesa2`, etc.) al final del topic. Así, cuando miréis los datos en Node-RED, sabréis de quién es cada sensor sin confusiones.
+**Importante para trabajos en grupo:** en `sendToBroker()` puedes cambiar el **topic de envío** para identificar mejor al alumno o al grupo (por ejemplo añadir `grupo4`, `mesa2`, `alumno_carla`). Así, al ver los datos en Node‑RED, sabréis de quién es cada sensor sin confusiones.
 
-<img width="1083" height="732" alt="Screenshot_4" src="https://github.com/user-attachments/assets/e3a386e3-c3f0-42d9-b6ea-fbc342030d76" />
+<img width="1083" height="732" alt="Cambiar topic de envío en sendToBroker" src="https://github.com/user-attachments/assets/e3a386e3-c3f0-42d9-b6ea-fbc342030d76" />
 
-
-***
+---
 
 ## 6) Topics MQTT y ejemplo de mensaje
 
-### Topic de datos
+### 6.1 Topic de datos (dónde se publica el JSON)
 
-El código publica en:
+El código publica en un topic con esta forma:
 
 ```
-orchard/<TYPE_NODE>/<chipIdHex>/cjmcu8128
+orchard/<TYPE_NODE>/<chipIdHex>/bmp280
 ```
 
-> Si tu proyecto es “solo BMP280”, puedes renombrar el sufijo `cjmcu8128` por `bmp280` en la función `sendToBroker()`.
+- `TYPE_NODE`: categoría (por ejemplo `meteorologia`)
+- `chipIdHex`: identificador del ESP (para que cada placa tenga su “canal”)
+- `bmp280`: indica que son datos del sensor BMP280
 
-### Ejemplo de payload JSON
+> Si en tu código aparece otro sufijo distinto, puedes renombrarlo para que sea más claro (por ejemplo `bmp280`).
+
+### 6.2 Ejemplo de payload JSON (lo que viaja por MQTT)
+
+Un ejemplo de mensaje sería:
 
 ```json
 {
@@ -163,17 +181,14 @@ orchard/<TYPE_NODE>/<chipIdHex>/cjmcu8128
 }
 ```
 
+Cómo leerlo:
 
-### Topic de estado (conexión)
+- `esp.ip`: la IP del ESP en la red WiFi.
+- `esp.rssi`: la “fuerza” de la señal WiFi (más cerca de 0 es mejor; por ejemplo -50 mejor que -80).
+- `timestamp`: tiempo desde que arrancó el ESP (en milisegundos).
+- `values.*`: las mediciones del sensor.
 
-Se publica un estado retained en:
 
-```
-orchard/<TYPE_NODE>/ESP8266Client-<chipId>/connection
-```
-
-- Al conectar: `"Online"` (retained)
-- Si cae sin desconectar bien: `"Offline"` (LWT, retained)
 
 ***
 
