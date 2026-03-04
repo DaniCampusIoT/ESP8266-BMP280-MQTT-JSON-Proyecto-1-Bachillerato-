@@ -14,7 +14,7 @@ Está pensado como práctica guiada para alumnado de 1º de Bachillerato: aprend
 
 - Se conecta a una red **WiFi** (con reintentos si falla).
 - Se conecta a un **broker MQTT** (con reconexión automática).
-- Publica un mensaje de estado **Online/Offline** usando LWT (Last Will) para monitorizar si el nodo cae.[^1]
+- Publica un mensaje de estado **Online/Offline** usando LWT (Last Will) para monitorizar si el nodo cae.
 - Inicializa y configura el **BMP280**.
 - Cada `SEND_PERIOD_MS`:
     - Lee `temperatura_c`, `presion_hpa`, `altitud_m`.
@@ -160,7 +160,7 @@ orchard/<TYPE_NODE>/ESP8266Client-<chipId>/connection
 ```
 
 - Al conectar: `"Online"` (retained)
-- Si cae sin desconectar bien: `"Offline"` (LWT, retained)[^1]
+- Si cae sin desconectar bien: `"Offline"` (LWT, retained)
 
 ***
 
