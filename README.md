@@ -77,12 +77,15 @@ Muchos módulos BMP280 traen pines **CSB** y **SDO**:
 ### 3.1 Arduino IDE y librerías
 En Arduino IDE (Library Manager) instala:
 - **Adafruit BMP280 Library**
+
   <img width="283" height="335" alt="Screenshot_1" src="https://github.com/user-attachments/assets/6b11d460-e529-4686-8a65-f4bb8497915e" />
 
 - **ArduinoJson**
+  
   <img width="275" height="345" alt="Screenshot_2" src="https://github.com/user-attachments/assets/9398869a-a109-44e6-b39c-2a28cfe0212e" />
 
 - **PubSubClient**
+  
 <img width="276" height="316" alt="Screenshot_3" src="https://github.com/user-attachments/assets/8c7517c4-06b1-4b96-a5eb-c9abf4f67af7" />
 
 ### 3.2 Instalar soporte ESP8266 (Board Manager)
